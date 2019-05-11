@@ -19,11 +19,13 @@ All contributions including documentation, pull requests, and bug reports are we
 Downgraded to C# 4 for Unity 5 compatibility.
 
 Adds custom attributes with string values, so you can write:
-	Thing *someVar "This is a custom attribute" *otherVar
-	{
-	Values		[ 0; 1; 2 ]
-	}
+
+    Thing *someVar "This is a custom attribute" *otherVar
+    {
+    Values    [ 0; 1; 2 ]
+    }
 
 
 Adds helper functions for easy node enumeration, so you can write:
-	node.GetChild<TydCollection>("Values").GetChildValues<int>() //Get all children in the Values record converted to integers
+
+    node.GetChild<TydCollection>("Values").GetChildValues<int>() //Get all children in the Values record converted to integers
