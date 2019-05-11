@@ -85,14 +85,10 @@ public static class Inheritance
     /// Registers a single node.
     /// When we resolve later, we'll be able to use this node as a source.
     ///</summary>
-    public static void Register(TydNode node)
+    public static void Register(TydCollection colNode)
     {
         if( !initialized )
             throw new Exception("Used Tyd.Inheritance when it was not initialized.");
-
-        var colNode = node as TydCollection;
-        if( !(colNode != null) )
-                return;
 
         //If the node has no handle, and no source, we can ignore it since it's not connected to inheritance at all.
         var nodeHandle = colNode.AttributeHandle;
