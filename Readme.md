@@ -13,3 +13,9 @@ TyDSharp version numbers don't necessarily match TyD version numbers.
 ## Contributions
 
 All contributions including documentation, pull requests, and bug reports are welcome!
+
+## This version
+
+Downgraded to C# 4 for Unity 5 compatibility.
+
+Adds custom attributes with string values and helper functions for easy node enumeration.
