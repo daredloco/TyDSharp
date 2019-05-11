@@ -1,3 +1,6 @@
+using System;
+using System.ComponentModel;
+
 namespace Tyd
 {
 
@@ -10,7 +13,11 @@ public class TydString : TydNode
     private string val;
 
     //Properties
-    public string Value{get=>val; set=>this.val = value;}
+    public string Value
+    {
+        get { return val; }
+        set { this.val = value; }
+    }
 
     public TydString(string name, string val, TydNode parent, int docLine=-1) : base(name, parent, docLine)
     {
@@ -24,7 +31,28 @@ public class TydString : TydNode
         return c;
     }
 
-    public override string ToString()=>$"{(Name!=null?Name:"NullName")}=\"{val}\"";
+    public override string ToString()
+    {
+        return string.Format("{0}=\"{1}\"", Name ?? "NullName", val);
+    }
+
+    /// <summary>
+    /// Converts the string to a value of type T
+    /// </summary>
+    /// <param name="name">If this is a nameless record from list, you can supply the list name here for better exception messages</param>
+    public T GetValue<T>(string name = null)
+    {
+        var t = typeof(T);
+        var val = TypeDescriptor.GetConverter(t).ConvertFrom(Value);
+        if (val != null)
+        {
+            return (T)val;
+        }
+        else
+        {
+            throw new Exception(string.Format("Could not convert node {1} to {0}", t.Name, name ?? Name));
+        }
+    }
 }
 
 }

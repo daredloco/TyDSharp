@@ -30,8 +30,16 @@ public static class Inheritance
             this.tydNode = tydNode;
         }
 
-        public int HeirCount=>heirs != null ? heirs.Count : 0;
-        public InheritanceNode GetHeir( int index )=>heirs[index];
+        public int HeirCount
+        {
+            get { return heirs != null ? heirs.Count : 0; }
+        }
+
+        public InheritanceNode GetHeir( int index )
+        {
+            return heirs[index];
+        }
+
         public void AddHeir( InheritanceNode n )
         {
             if( heirs == null )
@@ -39,7 +47,10 @@ public static class Inheritance
             heirs.Add(n);
         }
 
-        public override string ToString()=>tydNode.ToString();
+        public override string ToString()
+        {
+            return tydNode.ToString();
+        }
     }
 
     //Working vars
@@ -74,13 +85,14 @@ public static class Inheritance
     /// Registers a single node.
     /// When we resolve later, we'll be able to use this node as a source.
     ///</summary>
-    public static void Register(TydCollection node)
+    public static void Register(TydNode node)
     {
         if( !initialized )
             throw new Exception("Used Tyd.Inheritance when it was not initialized.");
 
-        if( !(node is TydCollection colNode) )
-            return;
+        var colNode = node as TydCollection;
+        if( !(colNode != null) )
+                return;
 
         //If the node has no handle, and no source, we can ignore it since it's not connected to inheritance at all.
         var nodeHandle = colNode.AttributeHandle;
@@ -90,10 +102,10 @@ public static class Inheritance
 
         //Ensure we're don't have two nodes of the same handle
         if( nodeHandle != null && nodesByHandle.ContainsKey(nodeHandle) )
-            throw new Exception($"Tyd error: Multiple Tyd nodes with the same handle {nodeHandle}.");
+            throw new Exception(string.Format("Tyd error: Multiple Tyd nodes with the same handle {0}.", nodeHandle));
 
         //Make an inheritance node for the Tyd node
-        var newNode = new InheritanceNode(node);
+        var newNode = new InheritanceNode(colNode);
         nodesUnresolved.Add(newNode);
         if( nodeHandle != null )
             nodesByHandle.Add(nodeHandle, newNode);
@@ -110,7 +122,8 @@ public static class Inheritance
 
         for( int i = 0; i < doc.Count; i++ )
         {
-            if( doc[i] is TydCollection tydCol )
+            var tydCol = doc[i] as TydCollection;
+            if( tydCol != null )
                 Register(tydCol);
         }
     }
@@ -125,52 +138,52 @@ public static class Inheritance
 
         LinkAllInheritanceNodes();
         ResolveAllUnresolvedInheritanceNodes();
+    }
 
-        // Link all unresolved nodes to their sources and heirs.
-        void LinkAllInheritanceNodes()
+    // Merge all unresolved nodes with their source nodes.
+    private static void ResolveAllUnresolvedInheritanceNodes()
+    {
+        // find roots from which we'll start resolving nodes,
+        // a node is a root node if it has null source or its source has been already resolved,
+        // this method works only for single inheritance!
+        var roots = nodesUnresolved.Where(x => x.source == null || x.source.resolved).ToList(); // important to make a copy
+
+        for (int i = 0; i < roots.Count; i++)
         {
-            for( int i = 0; i < nodesUnresolved.Count; i++ )
-            {
-                var urn = nodesUnresolved[i];
-
-                var attSource = urn.tydNode.AttributeSource;
-                if( attSource == null )
-                    continue;
-
-                if( !nodesByHandle.TryGetValue( attSource, out urn.source ) )
-                    throw new Exception($"Could not find source node named '{attSource}' for Tyd node: {urn.tydNode.FullTyd}" );
-
-                if( urn.source != null )
-                    urn.source.AddHeir(urn);
-            }
+            ResolveInheritanceNodeAndHeirs(roots[i]);
         }
 
-        // Merge all unresolved nodes with their source nodes.
-        void ResolveAllUnresolvedInheritanceNodes()
+        // check if there are any unresolved nodes (if there are, then it means that there is a cycle),
+        // and move nodes to resolved nodes collection
+        for (int i = 0; i < nodesUnresolved.Count; i++)
         {
-            // find roots from which we'll start resolving nodes,
-            // a node is a root node if it has null source or its source has been already resolved,
-            // this method works only for single inheritance!
-            var roots = nodesUnresolved.Where(x => x.source == null || x.source.resolved).ToList(); // important to make a copy
-
-            for( int i = 0; i < roots.Count; i++ )
+            if (!nodesUnresolved[i].resolved)
             {
-                ResolveInheritanceNodeAndHeirs(roots[i]);
+                throw new FormatException("Tyd error: Cyclic inheritance detected for node:\n" + nodesUnresolved[i].tydNode.FullTyd);
+                //continue;
             }
+            nodesResolved.Add(nodesUnresolved[i].tydNode, nodesUnresolved[i]);
+        }
 
-            // check if there are any unresolved nodes (if there are, then it means that there is a cycle),
-            // and move nodes to resolved nodes collection
-            for( int i = 0; i < nodesUnresolved.Count; i++ )
-            {
-                if( !nodesUnresolved[i].resolved )
-                {
-                    throw new FormatException("Tyd error: Cyclic inheritance detected for node:\n" + nodesUnresolved[i].tydNode.FullTyd);
-                    //continue;
-                }
-                nodesResolved.Add(nodesUnresolved[i].tydNode, nodesUnresolved[i]);
-            }
+        nodesUnresolved.Clear();
+    }
 
-            nodesUnresolved.Clear();
+    // Link all unresolved nodes to their sources and heirs.
+    private static void LinkAllInheritanceNodes()
+    {
+        for (int i = 0; i < nodesUnresolved.Count; i++)
+        {
+            var urn = nodesUnresolved[i];
+
+            var attSource = urn.tydNode.AttributeSource;
+            if (attSource == null)
+                continue;
+
+            if (!nodesByHandle.TryGetValue(attSource, out urn.source))
+                throw new Exception(string.Format("Could not find source node named '{0}' for Tyd node: {1}", attSource, urn.tydNode.FullTyd));
+
+            if (urn.source != null)
+                urn.source.AddHeir(urn);
         }
     }
 
@@ -184,7 +197,7 @@ public static class Inheritance
         // that there's a cycle, note that we're not reporting the full cycle in
         // the error message here, but only the last node which created a cycle
         if( node.resolved )
-            throw new Exception($"Cyclic inheritance detected for Tyd node:\n{node.tydNode.FullTyd}" );
+            throw new Exception(string.Format("Cyclic inheritance detected for Tyd node:\n{0}", node.tydNode.FullTyd));
 
         //Resolve this node
         {
@@ -198,7 +211,9 @@ public static class Inheritance
                 //Source exists - We now inherit from it
                 //We must use source's RESOLVED node here because our source can have its own source.
                 if( !node.source.resolved )
-                    throw new Exception($"Tried to resolve Tyd inheritance node {node} whose source has not been resolved yet. This means that this method was called in incorrect order.");
+                    throw new Exception(string.Format(
+                        "Tried to resolve Tyd inheritance node {0} whose source has not been resolved yet. This means that this method was called in incorrect order.",
+                        node));
 
                 CheckForDuplicateNodes(node.tydNode);
 
@@ -207,7 +222,7 @@ public static class Inheritance
                 //Write resolved node's class attribute
                 //Original takes precedence over source; source takes precedence over default
                 var attClass = node.tydNode.AttributeClass ?? node.source.tydNode.AttributeClass;
-                node.tydNode.SetupAttributes(attClass, null, null, false);
+                node.tydNode.SetAttribute("class", attClass);
 
                 //Apply inheritance from source to node
                 ApplyInheritance(node.source.tydNode, node.tydNode);

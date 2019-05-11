@@ -23,10 +23,26 @@ public abstract class TydNode
     public int docIndexEnd = -1;    //Index in the doc where this node ends
 
     //Access
-    public TydNode Parent   {get=>parent; set=>parent=value;}
-    public string Name      =>name;
-    public int LineNumber   =>docLine;
-    public string FullTyd   =>TydToText.Write(this);
+    public TydNode Parent
+    {
+        get { return parent; }
+        set { parent = value; }
+    }
+
+    public string Name
+    {
+        get { return name; }
+    }
+
+    public int LineNumber
+    {
+        get { return docLine; }
+    }
+
+    public string FullTyd
+    {
+        get { return TydToText.Write(this); }
+    }
 
     //Construction
     public TydNode(string name, TydNode parent, int docLine=-1)

@@ -25,7 +25,10 @@ public class TydDocument : TydTable
         this.nodes.AddRange(nodes);
     }
 
-    public override string ToString()=>$"{Name}({nameof(TydDocument)}, {Count})";
+    public override string ToString()
+    {
+        return string.Format("{0}({1}, {2})", Name, "TydDocument", Count);
+    }
 }
 
 }

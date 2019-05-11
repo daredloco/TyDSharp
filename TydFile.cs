@@ -20,9 +20,21 @@ public class TydFile
     protected string        filePath    = null;
 
     //Properties
-    public TydDocument      DocumentNode    {get=>docNode;set=>docNode = value;}
-    public string           FilePath        =>filePath;
-    public string           FileName        =>Path.GetFileName(filePath);
+    public TydDocument      DocumentNode
+    {
+        get { return docNode; }
+        set { docNode = value; }
+    }
+
+    public string           FilePath
+    {
+        get { return filePath; }
+    }
+
+    public string           FileName
+    {
+        get { return Path.GetFileName(filePath); }
+    }
 
     private TydFile(){}
 
@@ -80,7 +92,7 @@ public class TydFile
     ///<summary>
     /// Returns all the objects defined in the file, serialized to type T.
     ///</summary>
-    public IEnumerable<T> GetObjects<T>() where T : new()
+    /*public IEnumerable<T> GetObjects<T>() where T : new()
     {
         if( docNode == null )
             throw new Exception("TydFile has no document node: " + FileName);
@@ -89,12 +101,12 @@ public class TydFile
         {
             yield return n;
         }
-    }
+    }*/
 
     /// <summary>
     /// Returns the single object defined by the file, deserialized as type T.
     /// </summary>
-    public T GetObject<T>( bool resolveCrossRefs = false ) where T : new()
+    /*public T GetObject<T>( bool resolveCrossRefs = false ) where T : new()
     {
         if( docNode == null )
             throw new Exception("TydFile has no document node: " + FileName);
@@ -103,7 +115,7 @@ public class TydFile
             throw new Exception("TydFile contains a document node but no data: " + FileName );
 
         return TydHelper.TydToObject.GetObject<T>(docNode, resolveCrossRefs, filePath );
-    }
+    }*/
 
     ///<summary>
     /// Write to a file, overwriting any file present.
@@ -127,7 +139,10 @@ public class TydFile
         File.WriteAllText( filePath, tydText.ToString().TrimEnd() );
     }
 
-    public override string ToString() =>  FileName;
-}
+    public override string ToString()
+    {
+        return FileName;
+    }
+    }
 
 }

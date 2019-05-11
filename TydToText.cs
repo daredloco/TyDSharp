@@ -20,11 +20,13 @@ public static class TydToText
     {
 
         //It's a string
-        if( node is TydString str )
-            return IndentString(indent) + node.Name + " " + StringContentWriteable(str.Value);
+        var str = node as TydString;
+        if( str != null )
+                return IndentString(indent) + node.Name + " " + StringContentWriteable(str.Value);
 
         //It's a table
-        if( node is TydTable tab )
+        var tab = node as TydTable;
+        if( tab != null )
         {
             StringBuilder sb = new StringBuilder();
 
@@ -49,7 +51,8 @@ public static class TydToText
         }
 
         //It's a list
-        if( node is TydList list )
+        var list = node as TydList;
+        if( list != null )
         {
             StringBuilder sb = new StringBuilder();
 
@@ -88,25 +91,30 @@ public static class TydToText
             ? "\"" + EscapeCharsEscapedForQuotedString(value) + "\""
             : value;
 
-        //This is a set of heuristics to try to determine if we should write a string quoted or naked.
-        bool ShouldWriteWithQuotes( string s )
+
+
+        //Returns string content s with escape chars properly escaped according to Tyd rules.
+    }
+
+    //This is a set of heuristics to try to determine if we should write a string quoted or naked.
+    private static bool ShouldWriteWithQuotes(string value)
+    {
+        if (value.Length > 40) //String is long
+            return true;
+
+        if (value[value.Length - 1] == '.') //String ends with a period. It's probably a sentence
+            return true;
+
+        //Check the string character-by-character
+        for (int i = 0; i < value.Length; i++)
         {
-            if( value.Length > 40 ) //String is long
-                return true;
+            var c = value[i];
 
-            if( value[value.Length-1] == '.' ) //String ends with a period. It's probably a sentence
-                return true;
-
-            //Check the string character-by-character
-            for(int i=0; i<value.Length; i++ )
-            {
-                var c = value[i];
-
-                //Chars that imply we should use quotes
-                //Some of these are heuristics, like space.
-                //Some absolutely require quotes, like the double-quote itself. They'll break naked strings if unescaped (and naked strings are always written unescaped).
-                //Note that period is not on this list; it commonly appears as a decimal in numbers.
-                if( c == ' '
+            //Chars that imply we should use quotes
+            //Some of these are heuristics, like space.
+            //Some absolutely require quotes, like the double-quote itself. They'll break naked strings if unescaped (and naked strings are always written unescaped).
+            //Note that period is not on this list; it commonly appears as a decimal in numbers.
+            if (c == ' '
                 || c == '\n'
                 || c == '\t'
                 || c == '"'
@@ -118,47 +126,45 @@ public static class TydToText
                 || c == Constants.ListStartChar
                 || c == Constants.ListEndChar
                 )
-                    return true;
-            }
-
-            return false;
+                return true;
         }
 
-        //Returns string content s with escape chars properly escaped according to Tyd rules.
-        string EscapeCharsEscapedForQuotedString( string s )
-        {
-            return s.Replace("\"", "\\\"")
-                    .Replace("#", "\\#");
-        }
+        return false;
     }
 
+    private static string EscapeCharsEscapedForQuotedString(string s)
+    {
+    return s.Replace("\"", "\\\"")
+        .Replace("#", "\\#");
+    }
 
     private static bool AppendNodeIntro( TydCollection node, StringBuilder sb, int indent )
     {
         bool appendedSomething = false;
 
         if( node.Name != null )
-            AppendWithWhitespace( node.Name );
+            AppendWithWhitespace( node.Name, sb, ref appendedSomething, indent);
 
-        if( node.AttributeClass != null )
-            AppendWithWhitespace( Constants.AttributeStartChar + Constants.ClassAttributeName + " " + node.AttributeClass );
-
-        if( node.AttributeAbstract )
-            AppendWithWhitespace( Constants.AttributeStartChar + Constants.AbstractAttributeName );
-
-        if( node.AttributeHandle != null )
-            AppendWithWhitespace( Constants.AttributeStartChar + Constants.HandleAttributeName + " " + node.AttributeHandle );
-
-        if( node.AttributeSource != null )
-            AppendWithWhitespace( Constants.AttributeStartChar + Constants.SourceAttributeName + " " + node.AttributeSource );
+        foreach (var attribute in node.GetAttributes())
+            {
+            if (attribute.Value != null)
+                {
+                AppendWithWhitespace(Constants.AttributeStartChar + attribute.Key + " " + attribute.Value, sb, ref appendedSomething, indent);
+                }
+            else
+                {
+                AppendWithWhitespace(Constants.AttributeStartChar + attribute.Key, sb, ref appendedSomething, indent);
+                    }
+            }
 
         return appendedSomething;
+        
+    }
 
-        void AppendWithWhitespace( string s )
-        {
-            sb.Append( (appendedSomething ? " " : IndentString(indent)) + s );
-            appendedSomething = true;
-        } 
+    private static void AppendWithWhitespace(string s, StringBuilder sb, ref bool appendedSomething, int indent)
+    {
+        sb.Append((appendedSomething ? " " : IndentString(indent)) + s);
+        appendedSomething = true;
     }
 
     private static string IndentString(int indent)

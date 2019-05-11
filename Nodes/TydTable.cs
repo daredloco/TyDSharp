@@ -31,7 +31,10 @@ public class TydTable : TydCollection
         return c;
     }
 
-    public override string ToString()=>$"{Name}({nameof(TydTable)}, {Count})";
+    public override string ToString()
+    {
+        return string.Format("{0}({1}, {2})", Name, "TydTable", Count);
+    }
 }
 
 }

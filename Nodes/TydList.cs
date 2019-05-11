@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Tyd
 {
 
@@ -20,7 +18,10 @@ public class TydList : TydCollection
         return c;
     }
 
-    public override string ToString()=>$"{Name}({nameof(TydList)}, {Count})";
+    public override string ToString()
+    {
+        return string.Format("{0}({1}, {2})", Name, "TydList", Count);
+    }
 }
 
 }

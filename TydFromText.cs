@@ -6,12 +6,19 @@ namespace Tyd
 
 public static class TydFromText
 {
-    //Working temp
-    private static List<string> usedNames = new List<string>();
 
     public static IEnumerable<TydNode> Parse( string doc )
     {
         return Parse(doc, 0, null, true);
+    }
+
+    private static void SetAttributeValue(ref Dictionary<string, string> attributes, string key, string value)
+    {
+        if (attributes == null)
+        {
+            attributes = new Dictionary<string, string>();
+        }
+        attributes[key] = value;
     }
 
     ///<summary>
@@ -27,10 +34,7 @@ public static class TydFromText
         while(true)
         {
             string recordName           = null;
-            string recordAttClass       = null;
-            string recordAttHandle      = null;
-            string recordAttSource      = null;
-            bool   recordAttAbstract    = false;
+            Dictionary<string, string> attributes = null;
 
             try
             {
@@ -60,27 +64,21 @@ public static class TydFromText
 
                     //Read the att name
                     string attName = ReadSymbol(doc, ref p);
-                    if( attName == Constants.AbstractAttributeName )
+                    p = NextSubstanceIndex(doc, p);
+                    if (doc[p] == Constants.AttributeStartChar || doc[p] == Constants.CommentChar || doc[p] == Constants.TableStartChar)
                     {
                         //Just reading the abstract name indicates it's abstract, no value is needed
-                        recordAttAbstract = true;
+                        SetAttributeValue(ref attributes, attName, null);
                     }
                     else
                     {
-                        p = NextSubstanceIndex(doc, p);
-
                         //Read the att value
-                        string attVal = ReadSymbol(doc, ref p);
-                        switch( attName )
-                        {
-                            case Constants.ClassAttributeName:  recordAttClass  = attVal; break;
-                            case Constants.HandleAttributeName: recordAttHandle = attVal; break;
-                            case Constants.SourceAttributeName: recordAttSource = attVal; break;
-                            default: throw new Exception("Unknown attribute name '" + attName + "' at " + IndexToLocationString(doc, p) );
-                        }
+                        string value;
+                        ParseStringValue(doc, ref p, out value);
+                        SetAttributeValue(ref attributes, attName, value);
+                        p = NextSubstanceIndex(doc, p);
                     }
 
-                    p = NextSubstanceIndex(doc, p);
                 }
             }
             catch( Exception e )
@@ -101,21 +99,15 @@ public static class TydFromText
                 p = NextSubstanceIndex(doc, p);
 
                 //Recursively parse all of new child's children and add them to it
-                try
+                var usedNames = new HashSet<string>();
+                foreach( var subNode in Parse(doc, p, newTable, expectNames: true) )
                 {
-                    foreach( var subNode in Parse(doc, p, newTable, expectNames: true) )
-                    {
-                        if( usedNames.Contains( subNode.Name ) )
-                            throw new FormatException("Duplicate record name " + subNode.Name + " at " + IndexToLocationString(doc, p) );
-                        usedNames.Add( subNode.Name );
+                    if( usedNames.Contains( subNode.Name ) )
+                        throw new FormatException("Duplicate record name " + subNode.Name + " at " + IndexToLocationString(doc, p) );
+                    usedNames.Add( subNode.Name );
 
-                        newTable.AddChild( subNode );
-                        p = subNode.docIndexEnd + 1;
-                    }
-                }
-                finally
-                {
-                    usedNames.Clear();
+                    newTable.AddChild( subNode );
+                    p = subNode.docIndexEnd + 1;
                 }
 
                 p = NextSubstanceIndex(doc, p);
@@ -124,7 +116,7 @@ public static class TydFromText
                     throw new FormatException("Expected ']' at " + IndexToLocationString(doc, p));
 
                 newTable.docIndexEnd = p;
-                newTable.SetupAttributes(recordAttClass, recordAttHandle, recordAttSource, recordAttAbstract);
+                newTable.SetupAttributes(attributes);
                 yield return newTable;
 
                 //Move pointer one past the closing bracket
@@ -152,7 +144,7 @@ public static class TydFromText
                     throw new FormatException("Expected " + Constants.ListEndChar + " at " + IndexToLocationString(doc, p));
 
                 newList.docIndexEnd = p;
-                newList.SetupAttributes(recordAttClass, recordAttHandle, recordAttSource, recordAttAbstract);
+                newList.SetupAttributes(attributes);
                 yield return newList;
 
                 //Move pointer one past the closing bracket
@@ -162,7 +154,8 @@ public static class TydFromText
             {
                 //It's a string
                 int pStart = p;
-                ParseStringValue(doc, ref p, out string val);
+                string val;
+                ParseStringValue(doc, ref p, out val);
 
                 var strNode = new TydString(recordName, val, parent, IndexToLine(doc, pStart));
                 strNode.docIndexEnd = p-1;
@@ -206,6 +199,8 @@ public static class TydFromText
             while( p < doc.Length
                 && !IsNewline( doc, p )
                 && !( (doc[p] == Constants.RecordEndChar
+                    || doc[p] == Constants.TableStartChar
+                    || doc[p] == Constants.AttributeStartChar
                     || doc[p] == Constants.CommentChar
                     || doc[p] == Constants.TableEndChar
                     || doc[p] == Constants.ListEndChar)
@@ -235,21 +230,22 @@ public static class TydFromText
 
         //Take the input string and replace any escape sequences with the final chars they correspond to.
         //This can be opimized
-        string ResolveEscapeChars( string input )
-        {
-            for( int k=0; k<input.Length; k++ )
-            {
-                if( input[k] == '\\' )
-                {
-                    if( input.Length <= k+1 )
-                        throw new Exception("Tyd string value ends with single backslash: " + input);
+    }
 
-                    char resolvedChar = EscapedCharOf( input[k+1] );
-                    input = input.Substring(0, k) + resolvedChar + input.Substring(k+2);
-                }
+    private static string ResolveEscapeChars(string input)
+    {
+        for (int k = 0; k < input.Length; k++)
+        {
+            if (input[k] == '\\')
+            {
+                if (input.Length <= k + 1)
+                    throw new Exception("Tyd string value ends with single backslash: " + input);
+
+                char resolvedChar = EscapedCharOf(input[k + 1]);
+                input = input.Substring(0, k) + resolvedChar + input.Substring(k + 2);
             }
-            return input;
         }
+        return input;
     }
 
     //Returns the character that an escape sequence should resolve to, based on the second char of the escape sequence (after the backslash).
@@ -294,18 +290,18 @@ public static class TydFromText
             throw new FormatException("Missing symbol at " + IndexToLocationString(doc, p) );
 
         return doc.Substring(pStart, p-pStart);
-
-        bool IsSymbolChar( char c )
-        {
-            //This can be optimized to a range check
-            for( int i=0; i<Constants.SymbolChars.Length; i++ )
-            {
-                if( Constants.SymbolChars[i] == c )
-                    return true;
-            }
-            return false;
-        }
     }
+
+    private static bool IsSymbolChar(char c)
+        {
+        //This can be optimized to a range check
+        for (int i = 0; i < Constants.SymbolChars.Length; i++)
+            {
+            if (Constants.SymbolChars[i] == c)
+                return true;
+            }
+        return false;
+        }
 
     //Todo fully support \n or \r\n
     private static bool IsNewline( string doc, int p )
@@ -316,13 +312,15 @@ public static class TydFromText
 
     private static string IndexToLocationString( string doc, int index )
     {
-        IndexToLineColumn(doc, index, out int line, out int col);
+        int line, col;
+        IndexToLineColumn(doc, index, out line, out col);
         return "line " + line + " col " + col;
     }
 
     private static int IndexToLine( string doc, int index )
     {
-        IndexToLineColumn( doc, index, out int line, out _ );
+        int line, _;
+        IndexToLineColumn( doc, index, out line, out _ );
             return line;
     }
 

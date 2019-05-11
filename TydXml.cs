@@ -43,23 +43,14 @@ public static class TydXml
             : null;
 
         //Record attributes here so we can use them later
-        string attClass = null;
-        string attHandle = null;
-        string attSource = null;
-        bool attAbstract = false;
+        Dictionary<string, string> attributes = new Dictionary<string, string>();
+        
         var xmlAttributes = xmlRoot.Attributes;
         if( xmlAttributes != null )
         {
             foreach( XmlAttribute a in xmlAttributes )
             {
-                if( a.Name == "Class" )
-                    attClass = a.Value;
-                else if( a.Name == "Name" )
-                    attHandle = a.Value;
-                else if( a.Name == "ParentName" )
-                    attSource = a.Value;
-                else if( a.Name == "Abstract" && a.Value == "True" )
-                    attAbstract = true;
+                attributes[a.Name] = a.Value;
             }
         }
 
@@ -74,7 +65,7 @@ public static class TydXml
             //It's a list
 
             TydList tydRoot = new TydList(newTydName, tydParent);
-            tydRoot.SetupAttributes(attClass, attHandle, attSource, attAbstract);
+            tydRoot.SetupAttributes(attributes);
             foreach( XmlNode xmlChild in xmlRoot.ChildNodes )
             {
                 tydRoot.AddChild( TydNodeFromXmlNode(xmlChild, tydRoot) );
@@ -88,7 +79,6 @@ public static class TydXml
 
             //It's a table
             TydTable tydRoot = new TydTable(newTydName, tydParent);
-            tydRoot.SetupAttributes(attClass, attHandle, attSource, attAbstract);
             foreach( XmlNode xmlChild in xmlRoot.ChildNodes )
             {
                 tydRoot.AddChild( TydNodeFromXmlNode(xmlChild, tydRoot) );
