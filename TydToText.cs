@@ -132,16 +132,6 @@ namespace Tyd
         //This is a set of heuristics to try to determine if we should write a string quoted or naked.
         private static bool ShouldWriteWithQuotes(string value)
             {
-            if (value.Length > 40) //String is long
-                {
-                return true;
-                }
-
-            if (value[value.Length - 1] == '.') //String ends with a period. It's probably a sentence
-                {
-                return true;
-                }
-
             //Check the string character-by-character
             for (var i = 0; i < value.Length; i++)
                 {

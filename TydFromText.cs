@@ -236,19 +236,13 @@ namespace Tyd
                 val = doc.Substring(pStart, q - pStart + 1);
 
                 //Special case for 'null' naked string.
-                if (val == "null")
-                    {
-                    val = null;
-                    }
+                val = val == "null" ? null : ResolveEscapeChars(val);
+                }
 
-                //Resolve escaped characters
-                val = ResolveEscapeChars(val);
-
-                //Special case for ';': We want to be pointing after it, not on it.
-                if (p < doc.Length && doc[p] == ';')
-                    {
-                    p++;
-                    }
+            //Special case for ';': We want to be pointing after it, not on it.
+            if (p < doc.Length && doc[p] == ';')
+                {
+                p++;
                 }
 
             //Take the input string and replace any escape sequences with the final chars they correspond to.

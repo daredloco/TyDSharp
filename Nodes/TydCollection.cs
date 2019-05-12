@@ -310,7 +310,7 @@ namespace Tyd
         /// <summary>
         /// Returns the value of ann attribute or null
         /// </summary>
-        public string GetAttributeOrNull(string key)
+        public string GetAttributeOrNull(string key, string defaultValue = null)
             {
             if (_attributes != null)
                 {
@@ -320,7 +320,7 @@ namespace Tyd
                     return value;
                     }
                 }
-            return null;
+            return defaultValue;
             }
 
         ///<summary>
