@@ -27,7 +27,7 @@ namespace Tyd
 
         public string FullTyd
             {
-            get { return TydToText.Write(this); }
+            get { return TydToText.Write(this, true); }
             }
 
         //Construction

@@ -10,6 +10,11 @@ namespace Tyd
             {
             }
 
+        public TydList(string name, params TydNode[] children) : base(name)
+            {
+            AddChildren(children);
+            }
+
         public override TydNode DeepClone()
             {
             var c = new TydList(_name, Parent, DocLine);

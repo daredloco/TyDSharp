@@ -356,7 +356,7 @@ namespace Tyd
 
             for (var p = 0; p < index; p++)
                 {
-                if (IsNewline(doc, p))
+                if (doc[p] == '\n')
                     {
                     line++;
                     column = 0;

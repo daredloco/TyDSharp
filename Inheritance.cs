@@ -291,7 +291,7 @@ namespace Tyd
                 }
             catch (Exception e)
                 {
-                throw new Exception("ApplyInheritance exception: " + e + ".\nsource: (" + source + ")\n" + TydToText.Write(source) + "\ntarget: (" + heir + ")\n" + TydToText.Write(heir));
+                throw new Exception("ApplyInheritance exception: " + e + ".\nsource: (" + source + ")\n" + TydToText.Write(source, true) + "\ntarget: (" + heir + ")\n" + TydToText.Write(heir, true));
                 }
             }
 

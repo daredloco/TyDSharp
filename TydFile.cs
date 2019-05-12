@@ -140,7 +140,7 @@ namespace Tyd
             var tydText = new StringBuilder();
             foreach (var node in _docNode)
                 {
-                tydText.AppendLine(TydToText.Write(node));
+                tydText.AppendLine(TydToText.Write(node, true));
                 }
 
             //Write to the file

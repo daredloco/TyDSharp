@@ -333,6 +333,27 @@ namespace Tyd
             return node;
             }
 
+        /// <summary>
+        /// Replaces the node that has the same name as the supplied node directly
+        /// If no node has the same name, the supplied node will get appended to the end
+        /// </summary>
+        /// <returns>The supplied node</returns>
+        public T ReplaceChild<T>(T node) where T : TydNode
+            {
+            node.Parent = this;
+            for (var i = 0; i < _nodes.Count; i++)
+                {
+                var n = _nodes[i];
+                if (node.Name.Equals(n.Name))
+                    {
+                    _nodes[i] = node;
+                    return node;
+                    }
+                }
+            _nodes.Add(node);
+            return node;
+            }
+
         public void AddChildren<T>(params T[] ns) where T : TydNode
             {
             foreach (var node in ns)
