@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Tyd
     {
     ///<summary>
@@ -18,6 +20,7 @@ namespace Tyd
         public string Name
             {
             get { return _name; }
+            set { _name = value; }
             }
 
         public int LineNumber
@@ -31,11 +34,30 @@ namespace Tyd
             }
 
         //Construction
-        public TydNode(string name, TydNode parent = null, int docLine = -1)
+        public TydNode(string name, int docLine = -1)
             {
-            Parent = parent;
             _name = name;
             DocLine = docLine;
+            }
+
+        public IEnumerable<string> GetNodeValues()
+            {
+            var s = this as TydString;
+            if (s != null)
+                {
+                yield return s.Value;
+                }
+            else
+                {
+                var coll = this as TydCollection;
+                if (coll != null)
+                    {
+                    foreach (var value in coll.GetChildValues())
+                        {
+                        yield return value;
+                        }
+                    }
+                }
             }
 
         public abstract TydNode DeepClone();

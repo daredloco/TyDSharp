@@ -11,7 +11,7 @@ namespace Tyd
         ///</summary>
         public static TydNode TydNodeFromXmlDocument(XmlDocument xmlDocument)
             {
-            return TydNodeFromXmlNode(xmlDocument.DocumentElement, null);
+            return TydNodeFromXmlNode(xmlDocument.DocumentElement);
             }
 
         ///<summary>
@@ -22,7 +22,7 @@ namespace Tyd
             {
             foreach (XmlNode xmlChild in xmlDocument.DocumentElement.ChildNodes)
                 {
-                var newNode = TydNodeFromXmlNode(xmlChild, null);
+                var newNode = TydNodeFromXmlNode(xmlChild);
                 if (newNode != null)
                     {
                     yield return newNode;
@@ -34,7 +34,7 @@ namespace Tyd
         /// Convert a single XML tree into a Tyd tree.
         /// If expectName is false, it'll be parsed as a list item.
         ///</summary>
-        public static TydNode TydNodeFromXmlNode(XmlNode xmlRoot, TydNode tydParent)
+        public static TydNode TydNodeFromXmlNode(XmlNode xmlRoot)
             {
             if (xmlRoot is XmlComment)
                 {
@@ -60,18 +60,18 @@ namespace Tyd
             if (xmlRoot.ChildNodes.Count == 1 && xmlRoot.FirstChild is XmlText)
                 {
                 //It's a string
-                return new TydString(newTydName, xmlRoot.FirstChild.InnerText, tydParent);
+                return new TydString(newTydName, xmlRoot.FirstChild.InnerText);
                 }
             else if (xmlRoot.HasChildNodes && xmlRoot.FirstChild.Name == "li")
                 {
                 //Children are named 'li'
                 //It's a list
 
-                var tydRoot = new TydList(newTydName, tydParent);
+                var tydRoot = new TydList(newTydName);
                 tydRoot.SetupAttributes(attributes);
                 foreach (XmlNode xmlChild in xmlRoot.ChildNodes)
                     {
-                    tydRoot.AddChild(TydNodeFromXmlNode(xmlChild, tydRoot));
+                    tydRoot.AddChild(TydNodeFromXmlNode(xmlChild));
                     }
                 return tydRoot;
                 }
@@ -81,10 +81,10 @@ namespace Tyd
                 //Note that the case of no children is ambiguous between list and table; we choose list arbitrarily.
 
                 //It's a table
-                var tydRoot = new TydTable(newTydName, tydParent);
+                var tydRoot = new TydTable(newTydName);
                 foreach (XmlNode xmlChild in xmlRoot.ChildNodes)
                     {
-                    tydRoot.AddChild(TydNodeFromXmlNode(xmlChild, tydRoot));
+                    tydRoot.AddChild(TydNodeFromXmlNode(xmlChild));
                     }
                 return tydRoot;
                 }

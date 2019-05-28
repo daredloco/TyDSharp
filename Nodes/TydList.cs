@@ -6,7 +6,7 @@ namespace Tyd
     ///</summary>
     public class TydList : TydCollection
         {
-        public TydList(string name, TydNode parent = null, int docLine = -1) : base(name, parent, docLine)
+        public TydList(string name, int docLine = -1) : base(name, docLine)
             {
             }
 
@@ -15,9 +15,17 @@ namespace Tyd
             AddChildren(children);
             }
 
+        public TydList(string name, params string[] children) : base(name)
+            {
+            for (var i = 0; i < children.Length; i++)
+                {
+                AddChild(new TydString(null, children[i]));
+                }
+            }
+
         public override TydNode DeepClone()
             {
-            var c = new TydList(_name, Parent, DocLine);
+            var c = new TydList(_name, DocLine);
             CopyDataFrom(c);
             return c;
             }

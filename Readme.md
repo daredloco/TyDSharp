@@ -2,6 +2,8 @@
 
 This version of TyDSharp builds on the initial version, specifically to support the development of Software Inc.
 
+This version might get deprecated in the very near future.
+
 [Get the official TyDSharp here.](https://github.com/tyd-lang/TyD)
 
 [Read the TyD spec here.](https://github.com/tyd-lang/TyDSharp)

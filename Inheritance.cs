@@ -241,41 +241,46 @@ namespace Tyd
             {
             try
                 {
-                //They're strings: Copy source over heir
+                //They're either strings or nulls: We just keep the existing heir's value
+                if (source is TydString)
                     {
-                    var sourceStr = source as TydString;
-                    if (sourceStr != null)
+                    return;
+                    }
+
+                //Heir has noinherit attribute: Skip this inheritance
+                    {
+                    var heirCol = heir as TydCollection;
+                    if (heirCol != null && heirCol.AttributeNoInherit)
                         {
-                        var heirStr = heir as TydString;
-                        heirStr.Value = sourceStr.Value;
                         return;
                         }
                     }
 
-                //They're tables: Combine all children of source and heir, with source having priority in case of duplicates
+                //They're tables: Combine all children of source and heir. Unique-name source nodes are prepended
                     {
                     var sourceObj = source as TydTable;
                     if (sourceObj != null)
                         {
-                        var heirObj = (TydTable)heir;
+                        var heirTable = (TydTable)heir;
                         for (var i = 0; i < sourceObj.Count; i++)
                             {
                             var sourceChild = sourceObj[i];
-                            var heirMatchingChild = heirObj[sourceChild.Name];
+                            var heirMatchingChild = heirTable[sourceChild.Name];
+
                             if (heirMatchingChild != null)
                                 {
                                 ApplyInheritance(sourceChild, heirMatchingChild);
                                 }
                             else
                                 {
-                                heirObj.AddChild(sourceChild); //Does this need to be DeepClone?
+                                heirTable.InsertChild(sourceChild.DeepClone(), 0); 
                                 }
                             }
                         return;
                         }
                     }
 
-                //They're lists: Append source's entries to heir's entries
+                //They're lists: Prepend source's children before heir's children
                     {
                     var sourceList = source as TydList;
                     if (sourceList != null)
@@ -283,7 +288,8 @@ namespace Tyd
                         var heirList = (TydList)heir;
                         for (var i = 0; i < sourceList.Count; i++)
                             {
-                            heirList.AddChild(sourceList[i]); //Does this need to be DeepClone?
+                            //Insert at i so the nodes stay in the same order from source to heir
+                            heirList.InsertChild(sourceList[i].DeepClone(), i); 
                             }
                         return;
                         }

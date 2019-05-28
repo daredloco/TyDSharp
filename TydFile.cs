@@ -48,6 +48,40 @@ namespace Tyd
             return t;
             }
 
+        public static TydFile FromContent(string content, string filePath)
+            {
+            try
+                {
+                var tydNodeList = TydFromText.Parse(content).ToList();
+                var tydDoc = new TydDocument(tydNodeList);
+                return FromDocument(tydDoc, filePath);
+                }
+            catch (Exception e)
+                {
+                throw new Exception("Exception loading " + filePath + ": " + e);
+                }
+            }
+
+        public static List<TydFile> ReadAndResolvePath(string path, string exception = null)
+            {
+            var tyds = new List<TydFile>();
+            foreach (var file in Directory.GetFiles(path, "*.tyd"))
+                {
+                if (exception != null && Path.GetFileNameWithoutExtension(file).ToLower().Equals(exception))
+                    {
+                    continue;
+                    }
+                tyds.Add(FromContent(File.ReadAllText(file), file));
+                }
+            foreach (var file in tyds)
+                {
+                Inheritance.RegisterAllFrom(file.DocumentNode);
+                }
+            Inheritance.ResolveAll();
+            Inheritance.Clear();
+            return tyds;
+            }
+
         ///<summary>
         /// Create a new TydFile by loading data from a file at the given path.
         ///</summary>

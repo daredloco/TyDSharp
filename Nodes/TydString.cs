@@ -11,14 +11,14 @@ namespace Tyd
         //Properties
         public string Value { get; set; }
 
-        public TydString(string name, string val, TydNode parent = null, int docLine = -1) : base(name, parent, docLine)
+        public TydString(string name, string val, int docLine = -1) : base(name, docLine)
             {
             Value = val;
             }
 
         public override TydNode DeepClone()
             {
-            var c = new TydString(_name, Value, Parent, DocLine);
+            var c = new TydString(_name, Value, DocLine);
             c.DocIndexEnd = DocIndexEnd;
             return c;
             }

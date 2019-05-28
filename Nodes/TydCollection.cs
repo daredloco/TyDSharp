@@ -33,6 +33,18 @@ namespace Tyd
             set { SetAttribute("source", value); }
             }
 
+        public bool AttributeAbstract
+            {
+            get { return HasAttribute("abstract"); }
+            set { UnsetAttribute("abstract", !value); }
+            }
+
+        public bool AttributeNoInherit
+            {
+            get { return HasAttribute("noinherit"); }
+            set { UnsetAttribute("noinherit", !value); }
+            }
+
         public int Count
             {
             get { return _nodes.Count; }
@@ -62,7 +74,7 @@ namespace Tyd
                 }
             }
 
-        public TydCollection(string name, TydNode parent = null, int docLine = -1) : base(name, parent, docLine)
+        public TydCollection(string name, int docLine = -1) : base(name, docLine)
             {
             }
 
@@ -241,6 +253,32 @@ namespace Tyd
             return null;
             }
 
+        public TydTable Seek(string key, string value)
+            {
+            var t = this as TydTable;
+            if (t != null)
+                {
+                var n = GetChildValue(key, false);
+                if (value.Equals(n))
+                    {
+                    return t;
+                    }
+                }
+            for (var i = 0; i < _nodes.Count; i++)
+                {
+                var node = _nodes[i] as TydCollection;
+                if (node != null)
+                    {
+                    var res = node.Seek(key, value);
+                    if (res != null)
+                        {
+                        return res;
+                        }
+                    }
+                }
+            return null;
+            }
+
         public IEnumerable<KeyValuePair<string, string>> GetAttributes()
             {
             if (_attributes != null)
@@ -329,6 +367,13 @@ namespace Tyd
         public T AddChild<T>(T node) where T : TydNode
             {
             _nodes.Add(node);
+            node.Parent = this;
+            return node;
+            }
+
+        public T InsertChild<T>(T node, int id) where T : TydNode
+            {
+            _nodes.Insert(id, node);
             node.Parent = this;
             return node;
             }

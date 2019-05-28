@@ -8,7 +8,7 @@ namespace Tyd
 
         public static IEnumerable<TydNode> Parse(string doc)
             {
-            return Parse(doc, 0, null);
+            return Parse(doc, 0);
             }
 
         private static void SetAttributeValue(ref Dictionary<string, string> attributes, string key, string value)
@@ -25,7 +25,7 @@ namespace Tyd
         /// doc should have any opening bracket already stripped off.
         /// This recursive method is used both for parsing files, as well as for parsing specific entries inside files.
         ///</summary>
-        private static IEnumerable<TydNode> Parse(string doc, int startIndex, TydNode parent, bool expectNames = true)
+        private static IEnumerable<TydNode> Parse(string doc, int startIndex, bool expectNames = true)
             {
             var p = startIndex;
 
@@ -96,7 +96,7 @@ namespace Tyd
                 if (doc[p] == Constants.TableStartChar)
                     {
                     //It's a table
-                    var newTable = new TydTable(recordName, parent, IndexToLine(doc, p));
+                    var newTable = new TydTable(recordName, IndexToLine(doc, p));
 
                     //Skip past the opening bracket
                     p++;
@@ -105,7 +105,7 @@ namespace Tyd
 
                     //Recursively parse all of new child's children and add them to it
                     var usedNames = new HashSet<string>();
-                    foreach (var subNode in Parse(doc, p, newTable, expectNames: true))
+                    foreach (var subNode in Parse(doc, p, expectNames: true))
                         {
                         if (usedNames.Contains(subNode.Name))
                             {
@@ -122,7 +122,7 @@ namespace Tyd
 
                     if (doc[p] != Constants.TableEndChar)
                         {
-                        throw new FormatException("Expected ']' at " + IndexToLocationString(doc, p));
+                        throw new FormatException("Expected " + Constants.TableEndChar + " at " + IndexToLocationString(doc, p));
                         }
 
                     newTable.DocIndexEnd = p;
@@ -135,7 +135,7 @@ namespace Tyd
                 else if (doc[p] == Constants.ListStartChar)
                     {
                     //It's a list
-                    var newList = new TydList(recordName, parent, IndexToLine(doc, p));
+                    var newList = new TydList(recordName, IndexToLine(doc, p));
 
                     //Skip past the opening bracket
                     p++;
@@ -143,7 +143,7 @@ namespace Tyd
                     p = NextSubstanceIndex(doc, p);
 
                     //Recursively parse all of new child's children and add them to it
-                    foreach (var subNode in Parse(doc, p, newList, expectNames: false))
+                    foreach (var subNode in Parse(doc, p, expectNames: false))
                         {
                         newList.AddChild(subNode);
                         p = subNode.DocIndexEnd + 1;
@@ -169,7 +169,7 @@ namespace Tyd
                     string val;
                     ParseStringValue(doc, ref p, out val);
 
-                    var strNode = new TydString(recordName, val, parent, IndexToLine(doc, pStart));
+                    var strNode = new TydString(recordName, val, IndexToLine(doc, pStart));
                     strNode.DocIndexEnd = p - 1;
                     yield return strNode;
                     }
@@ -317,7 +317,7 @@ namespace Tyd
             return doc.Substring(pStart, p - pStart);
             }
 
-        private static bool IsSymbolChar(char c)
+        public static bool IsSymbolChar(char c)
             {
             //This can be optimized to a range check
             for (var i = 0; i < Constants.SymbolChars.Length; i++)

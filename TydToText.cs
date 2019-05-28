@@ -17,7 +17,7 @@ namespace Tyd
         /// Writes a given TydNode, along with all its descendants, as a string, at a given indent level.
         /// This method is recursive.
         ///</summary>
-        public static string Write(TydNode node, bool whitesmiths, int indent = 0, int longestName = 0)
+        public static string Write(TydNode node, bool whitesmiths, int indent = 0, int longestName = 0, bool forceQuotes = false)
             {
             var braceIndent = whitesmiths ? indent + 1 : indent;
             //It's a string
@@ -26,12 +26,28 @@ namespace Tyd
                 {
                 if (str.Name != null)
                     {
-                    return IndentString(indent) + node.Name + RepeatString(" ", (Math.Max(0, longestName - node.Name.Length) + 1)) + StringContentWriteable(str.Value);
+                    return IndentString(indent) + node.Name + RepeatString(" ", (Math.Max(0, longestName - node.Name.Length) + 1)) + StringContentWriteable(str.Value, forceQuotes);
                     }
                 else
                     {
-                    return IndentString(indent) + StringContentWriteable(str.Value);
+                    return IndentString(indent) + StringContentWriteable(str.Value, forceQuotes);
                     }
+                }
+
+            var doc = node as TydDocument;
+            if (doc != null)
+                {
+                var nameLength = doc.Nodes.Max(x => x.Name.Length);
+                var sb = new StringBuilder();
+                foreach (var subNode in doc)
+                    {
+                    sb.AppendLine(Write(subNode, whitesmiths, indent, nameLength, forceQuotes));
+                    if (subNode is TydCollection)
+                        {
+                        sb.AppendLine();
+                        }
+                    }
+                return sb.ToString();
                 }
 
             //It's a table
@@ -39,27 +55,41 @@ namespace Tyd
             if (tab != null)
                 {
                 var sb = new StringBuilder();
-
+                var simple = IsSimpleCollection(tab);
+                var intro = AppendNodeIntro(tab, sb, indent);
                 //Intro line
-                if (AppendNodeIntro(tab, sb, indent) && tab.Count > 0)
+                if (intro && !simple)
                     {
                     sb.AppendLine();
                     }
 
-                if (tab.Count == 0)
+                if (simple)
                     {
-                    sb.Append("{}");
+                    if (!intro)
+                        {
+                        sb.Append(IndentString(indent) + Constants.TableStartChar);
+                        }
+                    else
+                        {
+                        sb.Append(RepeatString(" ", Math.Max(0, longestName - tab.Name.Length) + 1) + Constants.TableStartChar);
+                        }
+                    for (var i = 0; i < tab.Count; i++)
+                        {
+                        sb.Append(i == 0 ? " " : "; ");
+                        sb.Append(Write(tab[i], whitesmiths, 0, 0, forceQuotes));
+                        }
+                    sb.Append(" " + Constants.TableEndChar);
                     }
                 else
                     {
                     var nameLength = tab.Nodes.Max(x => x.Name.Length);
                     //Sub-_nodes
-                    sb.AppendLine(IndentString(braceIndent) + "{");
+                    sb.AppendLine(IndentString(braceIndent) + Constants.TableStartChar);
                     for (var i = 0; i < tab.Count; i++)
                         {
-                        sb.AppendLine(Write(tab[i], whitesmiths, indent + 1, nameLength));
+                        sb.AppendLine(Write(tab[i], whitesmiths, indent + 1, nameLength, forceQuotes));
                         }
-                    sb.Append(IndentString(braceIndent) + "}");
+                    sb.Append(IndentString(braceIndent) + Constants.TableEndChar);
                     }
 
                 return sb.ToString();
@@ -70,55 +100,40 @@ namespace Tyd
             if (list != null)
                 {
                 var sb = new StringBuilder();
-                var simple = IsSimpleList(list);
+                var simple = IsSimpleCollection(list);
                 var intro = AppendNodeIntro(list, sb, indent);
                 //Intro line
-                if (intro && list.Count > 0 && !simple)
+                if (intro && !simple)
                     {
                     sb.AppendLine();
                     }
 
-                if (list.Count == 0)
+                if (simple)
                     {
-                    if (intro)
+                    if (!intro)
                         {
-                        sb.Append(RepeatString(" ", Math.Max(0, longestName - list.Name.Length) + 1) + "[]");
+                        sb.Append(IndentString(indent) + Constants.ListStartChar);
                         }
                     else
                         {
-                        sb.Append(IndentString(braceIndent) + "[]");
+                        sb.Append(RepeatString(" ", Math.Max(0, longestName - list.Name.Length) + 1) + Constants.ListStartChar);
                         }
+                    for (var i = 0; i < list.Count; i++)
+                        {
+                        sb.Append(i == 0 ? " " : "; ");
+                        sb.Append(Write(list[i], whitesmiths, 0, 0, forceQuotes));
+                        }
+                    sb.Append(" " + Constants.ListEndChar);
                     }
                 else
                     {
-                    if (simple)
+                    //Sub-_nodes
+                    sb.AppendLine(IndentString(braceIndent) + Constants.ListStartChar);
+                    for (var i = 0; i < list.Count; i++)
                         {
-                        if (!intro)
-                            {
-                            sb.Append(IndentString(braceIndent) + "[");
-                            }
-                        else
-                            {
-                            sb.Append(RepeatString(" ", Math.Max(0, longestName - list.Name.Length) + 1) + "[");
-                            }
-                        for (var i = 0; i < list.Count; i++)
-                            {
-                            sb.Append(i == 0 ? " " : "; ");
-                            sb.Append(Write(list[i], whitesmiths));
-                            }
-                        sb.Append(" ]");
+                        sb.AppendLine(Write(list[i], whitesmiths, indent + 1, 0, forceQuotes));
                         }
-                    else
-                        {
-                        //Sub-_nodes
-                        sb.AppendLine(IndentString(braceIndent) + "[");
-                        for (var i = 0; i < list.Count; i++)
-                            {
-                            sb.AppendLine(Write(list[i], whitesmiths, indent + 1));
-                            }
-                        sb.Append(IndentString(braceIndent) + "]");
-                        }
-
+                    sb.Append(IndentString(braceIndent) + Constants.ListEndChar);
                     }
 
                 return sb.ToString();
@@ -127,12 +142,34 @@ namespace Tyd
             throw new ArgumentException();
             }
 
-        private static bool IsSimpleList(TydList l)
+        private static bool IsSimpleCollection(TydCollection l)
             {
-            return l.Nodes.TrueForAll(x => x is TydString);
+            var c = 0;
+            var c2 = 0;
+            for (var i = 0; i < l.Nodes.Count; i++)
+                {
+                var node = l.Nodes[i] as TydString;
+                if (node != null)
+                    {
+                    if (node.Value != null)
+                        {
+                        if (node.Value.Contains("\n"))
+                            {
+                            return false;
+                            }
+                        c += node.Value.Length;
+                        }
+                    c2++;
+                    }
+                else
+                    {
+                    return false;
+                    }
+                }
+            return c2 < 2 || c < 64;
             }
 
-        private static string StringContentWriteable(string value)
+        private static string StringContentWriteable(string value, bool forceQuotes)
             {
             if (value == "")
                 {
@@ -144,7 +181,7 @@ namespace Tyd
                 return Constants.NullValueString;
                 }
 
-            return ShouldWriteWithQuotes(value)
+            return forceQuotes || ShouldWriteWithQuotes(value)
             ? "\"" + EscapeCharsEscapedForQuotedString(value) + "\""
             : value;
 
@@ -154,12 +191,18 @@ namespace Tyd
             }
 
         //This is a set of heuristics to try to determine if we should write a string quoted or naked.
-        private static bool ShouldWriteWithQuotes(string value)
+        public static bool ShouldWriteWithQuotes(string value)
             {
+            var len = 0;
             //Check the string character-by-character
             for (var i = 0; i < value.Length; i++)
                 {
                 var c = value[i];
+
+                if (!TydFromText.IsSymbolChar(c))
+                    {
+                    return true;
+                    }
 
                 //Chars that imply we should use quotes
                 //Some of these are heuristics, like space.
@@ -180,9 +223,13 @@ namespace Tyd
                     {
                     return true;
                     }
+                if (!char.IsWhiteSpace(c))
+                    {
+                    len++;
+                    }
                 }
 
-            return false;
+            return len == 0;
             }
 
         private static string EscapeCharsEscapedForQuotedString(string s)
@@ -204,7 +251,7 @@ namespace Tyd
                 {
                 if (attribute.Value != null)
                     {
-                    AppendWithWhitespace(Constants.AttributeStartChar + attribute.Key + " " + StringContentWriteable(attribute.Value), sb, ref appendedSomething, indent);
+                    AppendWithWhitespace(Constants.AttributeStartChar + attribute.Key + " " + StringContentWriteable(attribute.Value, false), sb, ref appendedSomething, indent);
                     }
                 else
                     {
@@ -240,7 +287,7 @@ namespace Tyd
             return sb.ToString();
             }
 
-        private static string IndentString(int indent)
+        public static string IndentString(int indent)
             {
             var s = "";
             for (var i = 0; i < indent; i++)

@@ -21,13 +21,26 @@ namespace Tyd
                 }
             }
 
-        public TydTable(string name, TydNode parent = null, int docLine = -1) : base(name, parent, docLine)
+        public TydTable(string name, int docLine = -1) : base(name, docLine)
             {
+            }
+
+        public TydTable(string name, params TydNode[] children) : base(name)
+            {
+            AddChildren(children);
+            }
+
+        public TydTable(string name, params string[] children) : base(name)
+            {
+            for (var i = 0; i < children.Length; i++)
+                {
+                AddChild(new TydString(null, children[i]));
+                }
             }
 
         public override TydNode DeepClone()
             {
-            var c = new TydTable(_name, Parent, DocLine);
+            var c = new TydTable(_name, DocLine);
             CopyDataFrom(c);
             return c;
             }
