@@ -55,7 +55,7 @@ namespace Tyd
             if (tab != null)
                 {
                 var sb = new StringBuilder();
-                var simple = IsSimpleCollection(tab);
+                var simple = tab.Parent != null && !(tab.Parent is TydDocument) && IsSimpleCollection(tab);
                 var intro = AppendNodeIntro(tab, sb, indent);
                 //Intro line
                 if (intro && !simple)
@@ -159,6 +159,10 @@ namespace Tyd
                             }
                         c += node.Value.Length;
                         }
+                    if (node.Name != null)
+                        {
+                        c += node.Name.Length;
+                        }
                     c2++;
                     }
                 else
@@ -199,7 +203,7 @@ namespace Tyd
                 {
                 var c = value[i];
 
-                if (!TydFromText.IsSymbolChar(c))
+                if (!TydFromText.IsSymbolChar(c) && c != '.')
                     {
                     return true;
                     }

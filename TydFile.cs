@@ -42,6 +42,7 @@ namespace Tyd
         ///</summary>
         public static TydFile FromDocument(TydDocument doc, string filePath = null)
             {
+            doc.Name = Path.GetFileName(filePath);
             var t = new TydFile();
             t._docNode = doc;
             t._filePath = filePath;
@@ -52,7 +53,7 @@ namespace Tyd
             {
             try
                 {
-                var tydNodeList = TydFromText.Parse(content).ToList();
+                var tydNodeList = TydFromText.Parse(content);
                 var tydDoc = new TydDocument(tydNodeList);
                 return FromDocument(tydDoc, filePath);
                 }
@@ -62,12 +63,12 @@ namespace Tyd
                 }
             }
 
-        public static List<TydFile> ReadAndResolvePath(string path, string exception = null)
+        public static List<TydFile> ReadAndResolvePath(string path, params string[] exception)
             {
             var tyds = new List<TydFile>();
             foreach (var file in Directory.GetFiles(path, "*.tyd"))
                 {
-                if (exception != null && Path.GetFileNameWithoutExtension(file).ToLower().Equals(exception))
+                if (exception != null && exception.Length > 0 && exception.Contains(Path.GetFileNameWithoutExtension(file).ToLower()))
                     {
                     continue;
                     }
@@ -116,7 +117,7 @@ namespace Tyd
                         {
                         readContents = streamReader.ReadToEnd();
                         }
-                    var tydNodeList = TydFromText.Parse(readContents).ToList();
+                    var tydNodeList = TydFromText.Parse(readContents);
                     var tydDoc = new TydDocument(tydNodeList);
                     return FromDocument(tydDoc, filePath);
                     }

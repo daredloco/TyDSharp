@@ -1,14 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Tyd
     {
     public static class TydFromText
         {
 
-        public static IEnumerable<TydNode> Parse(string doc)
+        public static List<TydNode> Parse(string doc)
             {
-            return Parse(doc, 0);
+            var line = 1;
+            return Parse(doc, 0, ref line, true, new List<TydNode>());
+            }
+
+        public static TydNode ParseOne(string doc)
+            {
+            var line = 1;
+            var res = Parse(doc, 0, ref line, true, new List<TydNode>(), true);
+            if (res.Count == 0)
+                {
+                throw new Exception("Couldn't retrieve element from empty TyD file");
+                }
+            return res[0];
             }
 
         private static void SetAttributeValue(ref Dictionary<string, string> attributes, string key, string value)
@@ -25,10 +38,10 @@ namespace Tyd
         /// doc should have any opening bracket already stripped off.
         /// This recursive method is used both for parsing files, as well as for parsing specific entries inside files.
         ///</summary>
-        private static IEnumerable<TydNode> Parse(string doc, int startIndex, bool expectNames = true)
+        private static List<TydNode> Parse(string doc, int startIndex, ref int currentLine, bool expectNames = true, List<TydNode> res = null, bool breakOnFirst = false)
             {
             var p = startIndex;
-
+            res = res ?? new List<TydNode>();
             //Main loop
             while (true)
                 {
@@ -37,29 +50,32 @@ namespace Tyd
 
                 try
                     {
+                    var before = currentLine;
                     //Skip insubstantial chars
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     //We reached EOF, so we're finished
                     if (p == doc.Length)
                         {
-                        yield break;
+                        return res;
                         }
 
                     //We reached a closing bracket, so we're finished with this record
                     if (doc[p] == Constants.TableEndChar || doc[p] == Constants.ListEndChar)
                         {
-                        yield break;
+                        //To avoid counting lines twice from parent call, we subtract last new lines counted
+                        currentLine = before;
+                        return res;
                         }
 
                     //Read the record _name if we're not reading anonymous records
                     if (expectNames)
                         {
-                        recordName = ReadSymbol(doc, ref p);
+                        recordName = ReadSymbol(doc, currentLine, ref p);
                         }
 
                     //Skip whitespace
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     //Read _attributes
                     while (doc[p] == Constants.AttributeStartChar)
@@ -68,8 +84,8 @@ namespace Tyd
                         p++;
 
                         //Read the att _name
-                        var attName = ReadSymbol(doc, ref p);
-                        p = NextSubstanceIndex(doc, p);
+                        var attName = ReadSymbol(doc, currentLine, ref p);
+                        p = NextSubstanceIndex(doc, p, ref currentLine);
                         if (doc[p] == Constants.AttributeStartChar || doc[p] == Constants.CommentChar || doc[p] == Constants.TableStartChar)
                             {
                             //No attribute value defined
@@ -79,16 +95,16 @@ namespace Tyd
                             {
                             //Read the att value
                             string value;
-                            ParseStringValue(doc, ref p, out value);
+                            ParseStringValue(doc, ref p, ref currentLine, out value);
                             SetAttributeValue(ref attributes, attName, value);
-                            p = NextSubstanceIndex(doc, p);
+                            p = NextSubstanceIndex(doc, p, ref currentLine);
                             }
 
                         }
                     }
                 catch (Exception e)
                     {
-                    throw new Exception("Exception parsing Tyd headers at " + IndexToLocationString(doc, p) + ": " + e.ToString(), e);
+                    throw new Exception("Exception parsing Tyd headers at " + IndexToLocationString(doc, currentLine, p) + ": " + e.ToString(), e);
                     }
 
                 //Read the record value.
@@ -96,38 +112,30 @@ namespace Tyd
                 if (doc[p] == Constants.TableStartChar)
                     {
                     //It's a table
-                    var newTable = new TydTable(recordName, IndexToLine(doc, p));
+                    var newTable = new TydTable(recordName, currentLine);
 
                     //Skip past the opening bracket
                     p++;
 
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     //Recursively parse all of new child's children and add them to it
-                    var usedNames = new HashSet<string>();
-                    foreach (var subNode in Parse(doc, p, expectNames: true))
+                    foreach (var subNode in Parse(doc, p, ref currentLine, true, newTable.Nodes))
                         {
-                        if (usedNames.Contains(subNode.Name))
-                            {
-                            throw new FormatException("Duplicate record _name " + subNode.Name + " at " + IndexToLocationString(doc, p));
-                            }
-
-                        usedNames.Add(subNode.Name);
-
-                        newTable.AddChild(subNode);
+                        subNode.Parent = newTable;
                         p = subNode.DocIndexEnd + 1;
                         }
 
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     if (doc[p] != Constants.TableEndChar)
                         {
-                        throw new FormatException("Expected " + Constants.TableEndChar + " at " + IndexToLocationString(doc, p));
+                        throw new FormatException("Expected " + Constants.TableEndChar + " at " + IndexToLocationString(doc, currentLine, p));
                         }
 
                     newTable.DocIndexEnd = p;
                     newTable.SetupAttributes(attributes);
-                    yield return newTable;
+                    res.Add(newTable);
 
                     //Move pointer one past the closing bracket
                     p++;
@@ -135,30 +143,33 @@ namespace Tyd
                 else if (doc[p] == Constants.ListStartChar)
                     {
                     //It's a list
-                    var newList = new TydList(recordName, IndexToLine(doc, p));
+                    var newList = new TydList(recordName, currentLine);
 
                     //Skip past the opening bracket
                     p++;
 
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     //Recursively parse all of new child's children and add them to it
-                    foreach (var subNode in Parse(doc, p, expectNames: false))
+                    foreach (var subNode in Parse(doc, p, ref currentLine, false, newList.Nodes))
                         {
-                        newList.AddChild(subNode);
+                        subNode.Parent = newList;
                         p = subNode.DocIndexEnd + 1;
                         }
-                    p = NextSubstanceIndex(doc, p);
+                    p = NextSubstanceIndex(doc, p, ref currentLine);
 
                     if (doc[p] != Constants.ListEndChar)
                         {
-                        throw new FormatException("Expected " + Constants.ListEndChar + " at " + IndexToLocationString(doc, p));
+                        throw new FormatException("Expected " + Constants.ListEndChar + " at " + IndexToLocationString(doc, currentLine, p));
                         }
 
                     newList.DocIndexEnd = p;
                     newList.SetupAttributes(attributes);
-                    yield return newList;
-
+                    res.Add(newList);
+                    if (breakOnFirst)
+                        {
+                        return res;
+                        }
                     //Move pointer one past the closing bracket
                     p++;
                     }
@@ -167,18 +178,22 @@ namespace Tyd
                     //It's a string
                     var pStart = p;
                     string val;
-                    ParseStringValue(doc, ref p, out val);
+                    ParseStringValue(doc, ref p, ref currentLine, out val);
 
-                    var strNode = new TydString(recordName, val, IndexToLine(doc, pStart));
+                    var strNode = new TydString(recordName, val, currentLine);
                     strNode.DocIndexEnd = p - 1;
-                    yield return strNode;
+                    res.Add(strNode);
+                    if (breakOnFirst)
+                        {
+                        return res;
+                        }
                     }
                 }
             }
 
         //We are at the first char of a string value.
         //This returns the string value, and places p at the first char after it.
-        private static void ParseStringValue(string doc, ref int p, out string val)
+        private static void ParseStringValue(string doc, ref int p, ref int currentLine, out string val)
             {
             var quoted = doc[p] == '"';
 
@@ -193,6 +208,10 @@ namespace Tyd
                 while (p < doc.Length
                     && !(doc[p] == '"' && doc[p - 1] != '\\'))
                     {
+                    if (doc[p] == '\n')
+                        {
+                        currentLine++;
+                        }
                     p++;
                     }
 
@@ -290,7 +309,7 @@ namespace Tyd
         //  -Record names
         //  -Attribute names
         //  -Attribute values
-        private static string ReadSymbol(string doc, ref int p)
+        private static string ReadSymbol(string doc, int line, ref int p)
             {
             var pStart = p;
             while (true)
@@ -311,7 +330,7 @@ namespace Tyd
 
             if (p == pStart)
                 {
-                throw new FormatException("Missing symbol at " + IndexToLocationString(doc, p));
+                throw new FormatException("Missing symbol at " + IndexToLocationString(doc, line, p));
                 }
 
             return doc.Substring(pStart, p - pStart);
@@ -335,41 +354,22 @@ namespace Tyd
             return doc[p] == '\n' || (doc[p] == '\r' && p < doc.Length - 1 && doc[p + 1] == '\n');
             }
 
-        private static string IndexToLocationString(string doc, int index)
+        private static string IndexToLocationString(string doc, int line, int index)
             {
-            int line, col;
-            IndexToLineColumn(doc, index, out line, out col);
-            return "line " + line + " col " + col;
-            }
-
-        private static int IndexToLine(string doc, int index)
-            {
-            int line, _;
-            IndexToLineColumn(doc, index, out line, out _);
-            return line;
-            }
-
-        private static void IndexToLineColumn(string doc, int index, out int line, out int column)
-            {
-            line = 1;
-            column = 1;
-
-            for (var p = 0; p < index; p++)
+            var col = 0;
+            while (index >= 0 && doc[index] != '\n')
                 {
-                if (doc[p] == '\n')
-                    {
-                    line++;
-                    column = 0;
-                    }
-                column++;
+                col++;
+                index--;
                 }
+            return "line " + line + " col " + col;
             }
 
         ///<summary>
         /// Returns the index of the next char after p that is not whitespace or part of a comment.
         /// If there is no more substance in the doc, this returns an index just after the end of the doc.
         ///</summary>
-        private static int NextSubstanceIndex(string doc, int p)
+        private static int NextSubstanceIndex(string doc, int p, ref int currentLine)
             {
             //As long as p keeps hitting comment starts or whitespace, we skip forward
             while (true)
@@ -383,6 +383,10 @@ namespace Tyd
                 //It's whitespace - skip over it
                 if (char.IsWhiteSpace(doc[p]))
                     {
+                    if (doc[p] == '\n')
+                        {
+                        currentLine++;
+                        }
                     p++;
                     continue;
                     }
@@ -394,7 +398,7 @@ namespace Tyd
                         {
                         p++;
                         }
-
+                    currentLine++;
                     //Skip past newline char(s). Since there may be just \n or \r\n, we have to handle both cases.
                     if (doc[p] == '\n')
                         {
