@@ -17,7 +17,7 @@ namespace Tyd
         /// Writes a given TydNode, along with all its descendants, as a string, at a given indent level.
         /// This method is recursive.
         ///</summary>
-        public static string Write(TydNode node, bool whitesmiths, int indent = 0, int longestName = 0, bool forceQuotes = false)
+        public static string Write(TydNode node, bool whitesmiths, int indent = 0, int longestName = 0, bool forceQuotes = false, bool noInlineTables = false)
             {
             var braceIndent = whitesmiths ? indent + 1 : indent;
             //It's a string
@@ -41,7 +41,7 @@ namespace Tyd
                 var sb = new StringBuilder();
                 foreach (var subNode in doc)
                     {
-                    sb.AppendLine(Write(subNode, whitesmiths, indent, nameLength, forceQuotes));
+                    sb.AppendLine(Write(subNode, whitesmiths, indent, nameLength, forceQuotes, noInlineTables));
                     if (subNode is TydCollection)
                         {
                         sb.AppendLine();
@@ -55,7 +55,7 @@ namespace Tyd
             if (tab != null)
                 {
                 var sb = new StringBuilder();
-                var simple = tab.Parent != null && !(tab.Parent is TydDocument) && IsSimpleCollection(tab);
+                var simple = !noInlineTables && tab.Parent != null && !(tab.Parent is TydDocument) && IsSimpleCollection(tab);
                 var intro = AppendNodeIntro(tab, sb, indent);
                 //Intro line
                 if (intro && !simple)
@@ -76,7 +76,7 @@ namespace Tyd
                     for (var i = 0; i < tab.Count; i++)
                         {
                         sb.Append(i == 0 ? " " : "; ");
-                        sb.Append(Write(tab[i], whitesmiths, 0, 0, forceQuotes));
+                        sb.Append(Write(tab[i], whitesmiths, 0, 0, forceQuotes, noInlineTables));
                         }
                     sb.Append(" " + Constants.TableEndChar);
                     }
@@ -87,7 +87,7 @@ namespace Tyd
                     sb.AppendLine(IndentString(braceIndent) + Constants.TableStartChar);
                     for (var i = 0; i < tab.Count; i++)
                         {
-                        sb.AppendLine(Write(tab[i], whitesmiths, indent + 1, nameLength, forceQuotes));
+                        sb.AppendLine(Write(tab[i], whitesmiths, indent + 1, nameLength, forceQuotes, noInlineTables));
                         }
                     sb.Append(IndentString(braceIndent) + Constants.TableEndChar);
                     }
@@ -121,7 +121,7 @@ namespace Tyd
                     for (var i = 0; i < list.Count; i++)
                         {
                         sb.Append(i == 0 ? " " : "; ");
-                        sb.Append(Write(list[i], whitesmiths, 0, 0, forceQuotes));
+                        sb.Append(Write(list[i], whitesmiths, 0, 0, forceQuotes, noInlineTables));
                         }
                     sb.Append(" " + Constants.ListEndChar);
                     }
@@ -131,7 +131,7 @@ namespace Tyd
                     sb.AppendLine(IndentString(braceIndent) + Constants.ListStartChar);
                     for (var i = 0; i < list.Count; i++)
                         {
-                        sb.AppendLine(Write(list[i], whitesmiths, indent + 1, 0, forceQuotes));
+                        sb.AppendLine(Write(list[i], whitesmiths, indent + 1, 0, forceQuotes, noInlineTables));
                         }
                     sb.Append(IndentString(braceIndent) + Constants.ListEndChar);
                     }

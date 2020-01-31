@@ -143,6 +143,7 @@ namespace Tyd
                 else if (doc[p] == Constants.ListStartChar)
                     {
                     //It's a list
+                    var pStart = p;
                     var newList = new TydList(recordName, currentLine);
 
                     //Skip past the opening bracket
@@ -158,9 +159,10 @@ namespace Tyd
                         }
                     p = NextSubstanceIndex(doc, p, ref currentLine);
 
-                    if (doc[p] != Constants.ListEndChar)
+                    if (p >= doc.Length || doc[p] != Constants.ListEndChar)
                         {
-                        throw new FormatException("Expected " + Constants.ListEndChar + " at " + IndexToLocationString(doc, currentLine, p));
+                        throw new FormatException(string.Format("Expected {0} from {1} at {2}",
+                            Constants.ListEndChar, IndexToLocationString(doc, newList.DocLine, pStart), IndexToLocationString(doc, currentLine, p)));
                         }
 
                     newList.DocIndexEnd = p;
@@ -202,12 +204,15 @@ namespace Tyd
                 {
                 p++; //Move past the opening quote
                 var pStart = p;
-
+                var lineStart = currentLine;
                 //Walk forward until we find the end quote
                 //We need to ignore any that are escaped
-                while (p < doc.Length
-                    && !(doc[p] == '"' && doc[p - 1] != '\\'))
+                while (p >= doc.Length || !(doc[p] == '"' && doc[p - 1] != '\\'))
                     {
+                    if (p >= doc.Length)
+                        {
+                        throw new FormatException("Expected \" but reached end of file at " + IndexToLocationString(doc, lineStart, pStart));
+                        }
                     if (doc[p] == '\n')
                         {
                         currentLine++;
@@ -357,7 +362,7 @@ namespace Tyd
         private static string IndexToLocationString(string doc, int line, int index)
             {
             var col = 0;
-            while (index >= 0 && doc[index] != '\n')
+            while (index >= 0 && index < doc.Length && doc[index] != '\n')
                 {
                 col++;
                 index--;
@@ -399,16 +404,18 @@ namespace Tyd
                         p++;
                         }
                     currentLine++;
-                    //Skip past newline char(s). Since there may be just \n or \r\n, we have to handle both cases.
-                    if (doc[p] == '\n')
+                    if (p < doc.Length)
                         {
-                        p++;
+                        //Skip past newline char(s). Since there may be just \n or \r\n, we have to handle both cases.
+                        if (doc[p] == '\n')
+                            {
+                            p++;
+                            }
+                        else
+                            {
+                            p += 2; //If it's not \n, we assume it's \r\n and skip two
+                            }
                         }
-                    else
-                        {
-                        p += 2;   //If it's not \n, we assume it's \r\n and skip two
-                        }
-
                     continue;
                     }
 
