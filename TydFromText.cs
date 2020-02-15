@@ -60,6 +60,13 @@ namespace Tyd
                         return res;
                         }
 
+                    //Unhandled semicolon, likely after list or table, ignore it according to spec
+                    if (doc[p] == ';')
+                        {
+                        p++;
+                        continue;
+                        }
+
                     //We reached a closing bracket, so we're finished with this record
                     if (doc[p] == Constants.TableEndChar || doc[p] == Constants.ListEndChar)
                         {
@@ -257,7 +264,7 @@ namespace Tyd
                     q--;
                     }
 
-                val = doc.Substring(pStart, q - pStart + 1);
+                val = q >= pStart ? doc.Substring(pStart, q - pStart + 1) : "";
 
                 //Special case for 'null' naked string.
                 val = val == "null" ? null : ResolveEscapeChars(val);
