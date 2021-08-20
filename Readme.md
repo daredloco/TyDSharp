@@ -1,8 +1,6 @@
 # TyDSharp
 
-This version of TyDSharp builds on the initial version, specifically to support the development of Software Inc.
-
-This version might get deprecated in the very near future.
+This version of TyDSharp builds on the version for Software INC and is used inside the [DataSINC](https://github.com/daredloco/DataSINC) Editor for the game.
 
 [Get the official TyDSharp here.](https://github.com/tyd-lang/TyD)
 
@@ -10,25 +8,7 @@ This version might get deprecated in the very near future.
 
 ## Changes
 
-Downgrade to C# 4 for Unity 5 compatibility.
-
-Adds custom attributes with string values, so you can write: (This is not in accordance with the official specification!)
-
-    Thing *someVar "This is a custom attribute" *otherVar
-    {
-    Values    [ 0; 1; 2 ]
-    }
-
-Adds helper functions for easy node enumeration, so you can write:
-
-    node.GetChild<TydCollection>("Values").GetChildValues<int>() //Get all children in the Values record converted to integers
-	
-Adds helper functions for easy TyD construction, so you can write:
-
-    var table = rootNode.AddChild(new TydTable("Thing"));
-	table.AddChild(new TydList("Values")).AddChildren(new TydString(null, "0"), new TydString(null, "1"), new TydString(null, "2"));
-
-## Contributions
-
-All contributions including documentation, pull requests, and bug reports are welcome!
-
+* Minor changes within the TydConverter to handle Crashes from the Editor if Variables have multiple types like SoftwareMarkets. If the variable is an array, but it is a TydString inside the file it will create a new TydList with a single item.
+* Added ignorenullvalues as parameter to the TydConverter.Serialize function to ignore fields with null as value.
+* Added TydAttributes.TydName which is a custom Attribute to give fields other names in the file if using the TydConverter for it.
+* Added TydAttributes.TydIgnore which is a custom Attribute to ignore certain fields if using the TydConverter as the NonSerialized attribute wouldn't work very well with WPF.
