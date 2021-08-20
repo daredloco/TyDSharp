@@ -12,3 +12,4 @@ This version of TyDSharp builds on the version for Software INC and is used insi
 * Added ignorenullvalues as parameter to the TydConverter.Serialize function to ignore fields with null as value.
 * Added TydAttributes.TydName which is a custom Attribute to give fields other names in the file if using the TydConverter for it.
 * Added TydAttributes.TydIgnore which is a custom Attribute to ignore certain fields if using the TydConverter as the NonSerialized attribute wouldn't work very well with WPF.
+* Added "en_US" CultureInfo to handle decimal numbers to the TydConverter classes. (There is probably an easier/better way to do it!)
